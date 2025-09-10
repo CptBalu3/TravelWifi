@@ -1,194 +1,132 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
-import os
-import json
-import time
-import threading
-import subprocess
+import os, json, subprocess, time, threading
 from flask import Flask, render_template, jsonify
+import psutil
 
-# --------------------------
-# Konfiguration
-# --------------------------
+app = Flask(__name__)
+
 CONFIG_DIR = os.path.expanduser("~/TravelWiFi/config")
-NETWORKS_FILE = os.path.join(CONFIG_DIR, "networks.json")
+NETWORK_FILE = os.path.join(CONFIG_DIR, "networks.json")
 WIGLE_CONF = os.path.join(CONFIG_DIR, "wigle.conf")
-AP_SSID = "mage_camp"
-AP_PASSWORD = "Wuschel2021"
-LITE_MODE = False  # automatisch gesetzt, wenn nur 1 Adapter
 
-# --------------------------
-# Flask App
-# --------------------------
-app = Flask(__name__, template_folder=os.path.expanduser("~/TravelWiFi/web/templates"))
+LITE_MODE = False
 
-# --------------------------
-# Hilfsfunktionen
-# --------------------------
 def load_networks():
-    if not os.path.exists(NETWORKS_FILE):
-        return []
-    with open(NETWORKS_FILE, "r") as f:
-        return json.load(f)
+    if os.path.exists(NETWORK_FILE):
+        return json.load(open(NETWORK_FILE))
+    return []
 
 def save_networks(data):
-    with open(NETWORKS_FILE, "w") as f:
+    with open(NETWORK_FILE, "w") as f:
         json.dump(data, f, indent=2)
 
 def scan_networks():
-    # iwlist scan
-    result = subprocess.run(["iwlist", "wlan0", "scan"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-    output = result.stdout.decode()
-    networks = []
-    for line in output.splitlines():
-        line = line.strip()
-        if line.startswith("ESSID:"):
-            ssid = line.split(":")[1].strip('"')
-            networks.append({"ssid": ssid, "signal": 0})
-        elif "Signal level=" in line:
-            try:
-                signal = int(line.split("Signal level=")[1].split()[0])
-                networks[-1]["signal"] = signal
-            except:
-                pass
-    return networks
-
-def connect_best_network():
-    networks = scan_networks()
-    known = load_networks()
-    known_nets = [n for n in networks if any(d["ssid"]==n["ssid"] for d in known)]
-    if known_nets:
-        best = max(known_nets, key=lambda x:x["signal"])
-        ssid = best["ssid"]
-        db_entry = next((d for d in known if d["ssid"]==ssid), None)
-        if db_entry and "password" in db_entry:
-            cmd = ["nmcli", "dev", "wifi", "connect", ssid, "password", db_entry["password"]]
-        else:
-            cmd = ["nmcli", "dev", "wifi", "connect", ssid]
-        subprocess.run(cmd)
-
-def setup_ap(lite_mode=False):
-    hostapd_conf_path = os.path.expanduser("~/TravelWiFi/config/hostapd.conf")
-    ssid = AP_SSID
-    password = AP_PASSWORD if not lite_mode else ""
-    conf = [
-        "interface=wlan1",
-        "driver=nl80211",
-        f"ssid={ssid}",
-        "hw_mode=g",
-        "channel=6",
-        "macaddr_acl=0",
-        "auth_algs=1",
-        "ignore_broadcast_ssid=0"
-    ]
-    if not lite_mode:
-        conf.append(f"wpa=2")
-        conf.append(f"wpa_passphrase={password}")
-        conf.append("wpa_key_mgmt=WPA-PSK")
-        conf.append("rsn_pairwise=CCMP")
-    with open(hostapd_conf_path, "w") as f:
-        f.write("\n".join(conf))
-    subprocess.run(["sudo", "systemctl", "restart", "hostapd"])
-
-def ntp_sync():
     try:
-        subprocess.run(["sudo", "timedatectl", "set-ntp", "true"])
+        result = subprocess.run(["sudo", "iwlist", "wlan0", "scan"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        output = result.stdout.decode()
+        networks = []
+        for line in output.split("\n"):
+            if "ESSID" in line:
+                ssid = line.split('"')[1]
+                networks.append({"ssid": ssid, "signal": 0})
+        return networks
     except:
-        pass
+        return []
 
-def cpu_temp():
-    result = subprocess.run(["vcgencmd", "measure_temp"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-    try:
-        return float(result.stdout.decode().split("=")[1].replace("'C",""))
-    except:
-        return 0
-
-def cpu_load():
-    result = subprocess.run(["top","-bn1"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-    for line in result.stdout.decode().splitlines():
-        if "Cpu(s)" in line:
-            try:
-                usage = 100 - float(line.split("%id,")[0].split()[-1])
-                return round(usage,2)
-            except:
-                return 0
-    return 0
-
-def mem_usage():
-    result = subprocess.run(["free","-m"], stdout=subprocess.PIPE)
-    lines = result.stdout.decode().splitlines()
-    mem_line = lines[1].split()
-    used = int(mem_line[2])
-    total = int(mem_line[1])
-    return used, total
-
-def net_usage():
-    result = subprocess.run(["ifstat","-i","wlan0","1","1"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-    lines = result.stdout.decode().splitlines()
-    if len(lines) >= 3:
-        rx, tx = lines[2].split()[:2]
-        return rx.strip(), tx.strip()
-    return "0","0"
-
-# --------------------------
-# Hintergrund-Thread
-# --------------------------
-def background_loop():
-    global LITE_MODE
-    adapters = subprocess.run(["lsusb"], stdout=subprocess.PIPE).stdout.decode()
-    if "8821CU" in adapters:
-        client_adapter = "wlan0"
-    else:
-        client_adapter = "wlan0"
-    if "RTL8188" in adapters:
-        ap_adapter = "wlan1"
-    else:
-        ap_adapter = None
-        LITE_MODE = True
-    while True:
-        connect_best_network()
-        if ap_adapter:
-            setup_ap(lite_mode=LITE_MODE)
-        ntp_sync()
-        time.sleep(60)
-
-threading.Thread(target=background_loop, daemon=True).start()
-
-# --------------------------
-# Flask Endpoints
-# --------------------------
 @app.route("/")
 def index():
-    networks = scan_networks()
     db = load_networks()
-    display = []
-    for n in networks:
-        entry = next((d for d in db if d["ssid"]==n["ssid"]), None)
-        display.append({
-            "ssid": n["ssid"],
-            "signal": n.get("signal",0),
-            "permanent": entry.get("permanent",False) if entry else False
-        })
-    return render_template("index.html", networks=display)
+    available = scan_networks()
+    permanent_nets = [n for n in db if n.get("permanent", False)]
+    non_permanent_nets = [n for n in available if not any(d["ssid"]==n["ssid"] and d.get("permanent",False) for d in db)]
+    non_permanent_nets.sort(key=lambda x: x.get("signal",0), reverse=True)
+    display_nets = non_permanent_nets + permanent_nets
+    return render_template("index.html", networks=display_nets)
+
+@app.route("/toggle_permanent/<ssid>", methods=["POST"])
+def toggle_permanent(ssid):
+    db = load_networks()
+    for n in db:
+        if n["ssid"] == ssid:
+            n["permanent"] = not n.get("permanent", False)
+            break
+    save_networks(db)
+    return jsonify({"success": True, "ssid": ssid, "permanent": n["permanent"]})
 
 @app.route("/status")
 def status():
-    cpu = cpu_load()
-    temp = cpu_temp()
-    used, total = mem_usage()
-    rx, tx = net_usage()
-    return jsonify({
-        "cpu_load": cpu,
-        "cpu_temp": temp,
-        "ram_used": used,
-        "ram_total": total,
-        "network_rx": rx,
-        "network_tx": tx
-    })
+    cpu = psutil.cpu_percent()
+    mem = psutil.virtual_memory().percent
+    temp = 0.0
+    try:
+        temp = float(subprocess.check_output(["vcgencmd","measure_temp"]).decode().split("=")[1].split("'")[0])
+    except:
+        pass
+    net = psutil.net_io_counters(pernic=True)
+    wlan_stats = net.get("wlan0", {"bytes_sent":0,"bytes_recv":0})
+    return jsonify({"cpu":cpu,"memory":mem,"temp":temp,"wlan_bytes_sent":wlan_stats.bytes_sent,"wlan_bytes_recv":wlan_stats.bytes_recv})
 
-# --------------------------
-# Main
-# --------------------------
+def get_client_channel(interface="wlan0"):
+    """Ermittelt den Kanal des verbundenen Client-WLANs"""
+    try:
+        output = subprocess.check_output(["iwlist", interface, "channel"]).decode()
+        for line in output.splitlines():
+            if "Current Frequency" in line and "Channel" in line:
+                return int(line.split("Channel")[1].strip().split(" ")[0])
+    except:
+        pass
+    return 6  # Fallback
+
+def setup_ap(lite_mode=False):
+    channel = get_client_channel("wlan0")
+    ap_conf = f"""
+interface=wlan1
+driver=nl80211
+ssid=TravelWiFi
+hw_mode=g
+channel={channel}
+wmm_enabled=0
+"""
+    if not lite_mode:
+        ap_conf += "wpa=2\nwpa_passphrase=Wuschel2021\n"
+    os.makedirs("/tmp/travelwifi", exist_ok=True)
+    with open("/tmp/travelwifi/hostapd.conf", "w") as f:
+        f.write(ap_conf)
+    subprocess.run(["sudo","systemctl","restart","hostapd"])
+
+def detect_adapters():
+    global LITE_MODE
+    output = subprocess.run(["lsusb"], stdout=subprocess.PIPE).stdout.decode()
+    if "RTL8188" not in output:
+        LITE_MODE = True
+
+def wigle_upload(ssid_list):
+    if not os.path.exists(WIGLE_CONF): return
+    cfg = {}
+    with open(WIGLE_CONF) as f:
+        for line in f:
+            if "=" in line:
+                k,v = line.strip().split("=",1)
+                cfg[k]=v
+    if not cfg.get("username") or not cfg.get("password"): return
+    with open(os.path.join(CONFIG_DIR,"wigle_last.json"),"w") as f:
+        json.dump(ssid_list,f,indent=2)
+
+def ntp_sync():
+    try:
+        subprocess.run(["sudo","timedatectl","set-ntp","true"])
+    except:
+        pass
+
+def background_loop():
+    while True:
+        detect_adapters()
+        setup_ap(lite_mode=LITE_MODE)
+        nets = scan_networks()
+        wigle_upload(nets)
+        ntp_sync()
+        time.sleep(30)
+
 if __name__ == "__main__":
+    threading.Thread(target=background_loop, daemon=True).start()
     app.run(host="0.0.0.0", port=5000)
