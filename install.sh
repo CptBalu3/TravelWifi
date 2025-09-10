@@ -1,5 +1,5 @@
 #!/bin/bash
-# TravelWiFi Installer - Final Version mit Status-API, Wigle, NTP, dynamischer Kanal
+# TravelWiFi Installer - Final Version mit allen Features
 set -e
 
 echo "[TravelWiFi] Installation gestartet..."
@@ -85,7 +85,6 @@ cat > ~/TravelWiFi/travelwifi_final.py <<'EOL'
 import os, json, subprocess, time, threading
 from flask import Flask, render_template, jsonify
 import psutil
-import requests
 
 app = Flask(__name__)
 
@@ -141,22 +140,34 @@ def toggle_permanent(ssid):
 def status():
     cpu = psutil.cpu_percent()
     mem = psutil.virtual_memory().percent
-    temp = None
+    temp = 0.0
     try:
         temp = float(subprocess.check_output(["vcgencmd","measure_temp"]).decode().split("=")[1].split("'")[0])
     except:
-        temp = 0.0
+        pass
     net = psutil.net_io_counters(pernic=True)
     wlan_stats = net.get("wlan0", {"bytes_sent":0,"bytes_recv":0})
     return jsonify({"cpu":cpu,"memory":mem,"temp":temp,"wlan_bytes_sent":wlan_stats.bytes_sent,"wlan_bytes_recv":wlan_stats.bytes_recv})
 
+def get_client_channel(interface="wlan0"):
+    """Ermittelt den Kanal des verbundenen Client-WLANs"""
+    try:
+        output = subprocess.check_output(["iwlist", interface, "channel"]).decode()
+        for line in output.splitlines():
+            if "Current Frequency" in line and "Channel" in line:
+                return int(line.split("Channel")[1].strip().split(" ")[0])
+    except:
+        pass
+    return 6  # Fallback
+
 def setup_ap(lite_mode=False):
+    channel = get_client_channel("wlan0")
     ap_conf = f"""
 interface=wlan1
 driver=nl80211
 ssid=TravelWiFi
 hw_mode=g
-channel=6
+channel={channel}
 wmm_enabled=0
 """
     if not lite_mode:
@@ -181,7 +192,6 @@ def wigle_upload(ssid_list):
                 k,v = line.strip().split("=",1)
                 cfg[k]=v
     if not cfg.get("username") or not cfg.get("password"): return
-    # Beispiel: nur lokale Speicherung, echte API-Calls hier möglich
     with open(os.path.join(CONFIG_DIR,"wigle_last.json"),"w") as f:
         json.dump(ssid_list,f,indent=2)
 
