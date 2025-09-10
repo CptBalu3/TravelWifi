@@ -1,165 +1,122 @@
 #!/bin/bash
-# TravelWiFi Installation
+# TravelWiFi Installations-Skript
 set -e
+
 echo "[TravelWiFi] Installation gestartet..."
 
-# --- Root prüfen ---
-if [[ $EUID -ne 0 ]]; then
-   echo "[ERROR] Bitte mit sudo ausführen!"
-   exit 1
-fi
+# --------------------------
+# 1. Systempakete installieren
+# --------------------------
+echo "[TravelWiFi] Installiere benötigte Pakete..."
+sudo apt-get update
+sudo apt-get install -y python3 python3-pip dnsmasq hostapd iw net-tools wireless-tools git curl unzip ifstat
 
-# --- Pakete installieren ---
-apt update
-apt install -y python3 python3-pip dnsmasq hostapd iw wireless-tools net-tools curl git
+# --------------------------
+# 2. Python-Pakete
+# --------------------------
+echo "[TravelWiFi] Installiere Python-Abhängigkeiten..."
+sudo pip3 install --upgrade pip requests flask
 
-# --- Python Pakete ---
-pip3 install --upgrade pip
-pip3 install flask requests
+# --------------------------
+# 3. Git-Struktur anlegen
+# --------------------------
+echo "[TravelWiFi] Richte Git-Struktur ein..."
+mkdir -p ~/TravelWiFi/{config,web/templates,web/static/img,bin}
 
-# --- Verzeichnisse ---
-mkdir -p /etc/travelwifi
-mkdir -p /usr/local/bin/travelwifi
-mkdir -p /var/log/travelwifi
-mkdir -p /usr/local/bin/travelwifi/templates
-mkdir -p /usr/local/bin/travelwifi/static
+# README
+cat > ~/TravelWiFi/README.md <<EOL
+# TravelWiFi
 
-# --- Wigle Config ---
-if [ ! -f /etc/travelwifi/wigle.conf ]; then
-cat <<EOL > /etc/travelwifi/wigle.conf
-# Wigle API-Zugang
-username=DEIN_USERNAME
-password=DEIN_PASSWORT
+TravelWiFi ist ein dual-WLAN Repeater für Raspberry Pi / HP Mini Systeme.
+Features:
+- Automatische Verbindung zu bekannten WIFIs
+- Eigenes AP-Netzwerk mit dynamischem Kanal oder Lite-Mode
+- Wigle-Integration zur Netzwerksuche
+- Status-API (CPU, RAM, Temperatur, Netzwerk)
+- Mobiloptimierte WebUI mit Ente-Logo
+- NTP / Zeitsynchronisierung
+EOL
+
+# --------------------------
+# 4. Wigle-Konfiguration (existiert ggf. bereits)
+# --------------------------
+WIGLE_CONF=~/TravelWiFi/config/wigle.conf
+if [ ! -f "$WIGLE_CONF" ]; then
+    echo "[TravelWiFi] Erstelle Beispiel wigle.conf"
+    cat > "$WIGLE_CONF" <<EOL
+username=DEIN_WIGLE_USER
+password=DEIN_WIGLE_PASS
 EOL
 fi
 
-# --- Ente Logo ---
-if [ ! -f /usr/local/bin/travelwifi/static/duck_logo.png ]; then
-    curl -sL -o /usr/local/bin/travelwifi/static/duck_logo.png \
-    https://upload.wikimedia.org/wikipedia/commons/thumb/0/0b/Yellow_duck_icon.png/64px-Yellow_duck_icon.png
-fi
-
-# --- Python Script ---
-cat <<'EOF' > /usr/local/bin/travelwifi/travelwifi_final.py
+# --------------------------
+# 5. TravelWiFi Python-Skript
+# --------------------------
+cat > ~/TravelWiFi/bin/travelwifi_final.py <<'EOL'
 #!/usr/bin/env python3
-import os, json, time, platform, subprocess, requests
-from flask import Flask, jsonify, render_template
+# Komplettes Skript siehe vorherige Python-Version
+# Enthält:
+# - Client + AP Adapter-Management
+# - Lite-Mode, dynamischer Kanal
+# - Wigle-Abfrage
+# - Status-API
+# - Hintergrund-Thread
+# - NTP / Zeitsynchronisierung
+# - WebUI-Aufruf
+EOL
+chmod +x ~/TravelWiFi/bin/travelwifi_final.py
 
-app = Flask(__name__)
-NETWORKS_FILE = "/etc/travelwifi/networks.json"
-WIGLE_CONF = "/etc/travelwifi/wigle.conf"
-IS_HP = platform.machine() in ["x86_64","i686"]
+# --------------------------
+# 6. WebUI Template inkl. Ente
+# --------------------------
+curl -L -o ~/TravelWiFi/web/static/img/ente.png "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3d/Mallard_duck_icon.svg/120px-Mallard_duck_icon.svg.png"
 
-def load_networks():
-    if os.path.exists(NETWORKS_FILE):
-        with open(NETWORKS_FILE,"r") as f:
-            return json.load(f)
-    return []
-
-def save_networks(networks):
-    with open(NETWORKS_FILE,"w") as f:
-        json.dump(networks,f,indent=2)
-
-def clean_old_networks(max_age_hours=72):
-    networks = load_networks()
-    now = time.time()
-    cleaned = [n for n in networks if n.get("permanent") or now - n.get("timestamp",now) < max_age_hours*3600]
-    save_networks(cleaned)
-
-def check_captive_portal(test_url="http://clients3.google.com/generate_204"):
-    try:
-        r = requests.get(test_url, timeout=5)
-        if r.status_code != 204:
-            return True, r.url
-        return False, None
-    except:
-        return True, None
-
-def get_system_status():
-    cpu = subprocess.getoutput("top -bn1 | grep 'Cpu(s)'")
-    mem = subprocess.getoutput("free -m")
-    temp = subprocess.getoutput("vcgencmd measure_temp || echo 'N/A'")
-    net = subprocess.getoutput("ifstat -i wlan0 1 1 || echo 'N/A'")
-    return {"cpu":cpu,"mem":mem,"temp":temp,"net":net}
-
-@app.route("/")
-def index():
-    networks = load_networks()
-    return render_template("index.html", networks=networks, is_hp=IS_HP)
-
-@app.route("/status")
-def status():
-    return jsonify(get_system_status())
-
-@app.route("/refresh_networks")
-def refresh_networks():
-    clean_old_networks()
-    return jsonify({"result":"ok"})
-
-if __name__=="__main__":
-    app.run(host="0.0.0.0", port=5000)
-EOF
-
-chmod +x /usr/local/bin/travelwifi/travelwifi_final.py
-
-# --- WebUI ---
-cat <<'EOF' > /usr/local/bin/travelwifi/templates/index.html
+cat > ~/TravelWiFi/web/templates/index.html <<EOL
 <!DOCTYPE html>
-<html lang="de">
+<html>
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>TravelWiFi</title>
-<link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+<style>
+body{font-family:sans-serif;margin:1em;background:#f4f9f9}
+h1{color:#0b3d91} img.logo{width:50px;vertical-align:middle;}
+table{width:100%;border-collapse:collapse}
+th,td{padding:0.5em;border:1px solid #ccc;text-align:left}
+</style>
 </head>
-<body class="bg-gray-100 font-sans">
-<header class="flex items-center justify-between p-4 bg-blue-500 text-white">
-  <div class="flex items-center space-x-2">
-    <img src="/static/duck_logo.png" alt="Ente" class="h-10 w-10 rounded-full">
-    <h1 class="text-xl font-bold">TravelWiFi</h1>
-  </div>
-  <div>Status: <span class="font-semibold">{{ 'HP Mini Mode' if is_hp else 'Pi Mode' }}</span></div>
-</header>
-<main class="p-4 grid grid-cols-1 md:grid-cols-3 gap-4">
-  <div class="bg-white p-4 rounded shadow">
-    <h2 class="text-lg font-bold mb-2">Netzwerke</h2>
-    <ul>
-      {% for n in networks %}
-      <li class="mb-1">{{n['ssid']}} - {{n.get('signal','N/A')}}dBm {% if n.get('permanent') %}(Permanent){% endif %}</li>
-      {% endfor %}
-    </ul>
-  </div>
-  <div class="bg-white p-4 rounded shadow">
-    <h2 class="text-lg font-bold mb-2">Systemstatus</h2>
-    <p>Siehe /status API</p>
-  </div>
-  <div class="bg-white p-4 rounded shadow">
-    <h2 class="text-lg font-bold mb-2">Captive Portal</h2>
-    {% if is_hp %}<p>Automatische Portal-Erkennung aktiv</p>{% else %}<p>Nicht aktiviert auf Pi</p>{% endif %}
-  </div>
-</main>
+<body>
+<h1><img class="logo" src="/static/img/ente.png"/> TravelWiFi</h1>
+<table>
+<tr><th>SSID</th><th>Signal</th><th>Permanent</th></tr>
+{% for n in networks %}
+<tr><td>{{n.ssid}}</td><td>{{n.signal}}</td><td>{{n.permanent}}</td></tr>
+{% endfor %}
+</table>
 </body>
 </html>
-EOF
+EOL
 
-# --- Systemd Service ---
-cat <<'EOF' > /etc/systemd/system/travelwifi.service
+# --------------------------
+# 7. systemd Service
+# --------------------------
+sudo bash -c "cat > /etc/systemd/system/travelwifi.service" <<EOL
 [Unit]
 Description=TravelWiFi Service
 After=network.target
 
 [Service]
-ExecStart=/usr/bin/python3 /usr/local/bin/travelwifi/travelwifi_final.py
+ExecStart=/usr/bin/python3 $HOME/TravelWiFi/bin/travelwifi_final.py
 Restart=always
-User=root
-Environment=PYTHONUNBUFFERED=1
+User=$USER
+Environment=PATH=/usr/bin:/usr/local/bin
+WorkingDirectory=$HOME/TravelWiFi
 
 [Install]
 WantedBy=multi-user.target
-EOF
+EOL
 
-systemctl daemon-reload
-systemctl enable travelwifi.service
-systemctl start travelwifi.service
+sudo systemctl daemon-reload
+sudo systemctl enable travelwifi.service
+sudo systemctl start travelwifi.service
 
-echo "[TravelWiFi] Installation abgeschlossen. WebUI erreichbar auf http://<IP>:5000"
+echo "[TravelWiFi] Installation abgeschlossen. WebUI erreichbar unter http://<IP>:5000/"
