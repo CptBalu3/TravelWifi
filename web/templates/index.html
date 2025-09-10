@@ -1,1 +1,23 @@
-
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TravelWiFi</title>
+<style>
+body{font-family:sans-serif;margin:1em;background:#f4f9f9}
+h1{color:#0b3d91} img.logo{width:50px;vertical-align:middle;}
+table{width:100%;border-collapse:collapse}
+th,td{padding:0.5em;border:1px solid #ccc;text-align:left}
+</style>
+</head>
+<body>
+<h1><img class="logo" src="/static/img/ente.png"/> TravelWiFi</h1>
+<table>
+<tr><th>SSID</th><th>Signal</th><th>Permanent</th></tr>
+{% for n in networks %}
+<tr><td>{{n.ssid}}</td><td>{{n.signal}}</td><td>{{n.permanent}}</td></tr>
+{% endfor %}
+</table>
+</body>
+</html>
+EOL
