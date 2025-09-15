@@ -11,21 +11,25 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 # 2. Installation der benötigten Systempakete
-echo "Installiere Systempakete (hostapd, dnsmasq, etc.)..."
+echo "Installiere Systempakete (git, python3-venv, hostapd, dnsmasq, net-tools, etc.)..."
 apt-get update
-apt-get install -y git python3 python3-pip hostapd dnsmasq net-tools dnsutils
+apt-get install -y git python3 python3-pip python3-venv hostapd dnsmasq net-tools dnsutils
 
-# 3. Installation der benötigten Python-Bibliotheken
-echo "Installiere Python-Bibliotheken (Flask, psutil, requests)..."
-pip3 install Flask psutil requests
+# 3. Erstellung der virtuellen Python-Umgebung
+echo "Erstelle eine virtuelle Python-Umgebung..."
+python3 -m venv venv
 
-# 4. Erstellung der Verzeichnisstruktur
+# 4. Installation der benötigten Python-Bibliotheken
+echo "Installiere Python-Bibliotheken (Flask, psutil, requests) in die virtuelle Umgebung..."
+./venv/bin/pip install Flask psutil requests
+
+# 5. Erstellung der Verzeichnisstruktur
 echo "Erstelle die Verzeichnisstruktur..."
 mkdir -p web/templates web/static/css web/static/images
 mkdir -p scripts
 mkdir -p systemd
 
-# 5. Erstellung der systemd-Service-Datei
+# 6. Erstellung der systemd-Service-Datei
 echo "Erstelle temporäre Service-Datei..."
 cat > systemd/travelwifi.service <<EOL
 [Unit]
@@ -33,7 +37,7 @@ Description=TravelWifi Webserver
 After=network.target
 
 [Service]
-ExecStart=/usr/bin/python3 $(pwd)/webserver.py
+ExecStart=$(pwd)/venv/bin/python $(pwd)/webserver.py
 WorkingDirectory=$(pwd)
 Restart=always
 RestartSec=5s
@@ -42,18 +46,20 @@ RestartSec=5s
 WantedBy=multi-user.target
 EOL
 
-# 6. Kopieren des Service-Files und Aktivierung des Dienstes
+# 7. Kopieren des Service-Files und Aktivierung des Dienstes
 echo "Kopiere Service-Datei und aktiviere den Dienst..."
 cp systemd/travelwifi.service /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable travelwifi.service
 
-# 7. Setze Berechtigungen für das Hauptskript
+# 8. Setze Berechtigungen für das Hauptskript
 echo "Setze Ausführungsrechte für webserver.py..."
 chmod +x webserver.py
 
-# 8. Konfiguriere sudoers für sichere Netzwerkbefehle ohne Passwort
+# 9. Konfiguriere sudoers für sichere Netzwerkbefehle ohne Passwort
 echo "Konfiguriere sudoers für sichere Netzwerkbefehle..."
-echo "pi ALL=(ALL) NOPASSWD: /usr/sbin/hostapd, /usr/sbin/dnsmasq, /usr/bin/nmcli, /usr/bin/ping" >> /etc/sudoers.d/travelwifi
+echo "gdl ALL=(ALL) NOPASSWD: /usr/sbin/hostapd, /usr/sbin/dnsmasq, /usr/bin/nmcli, /usr/bin/ping" >> /etc/sudoers.d/travelwifi
+chown gdl:gdl /etc/sudoers.d/travelwifi
+chmod 0440 /etc/sudoers.d/travelwifi
 
 echo "Installation abgeschlossen. Bitte starten Sie das System neu, um den Dienst zu aktivieren."
