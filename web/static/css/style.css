@@ -1,0 +1,256 @@
+/* Grundlegende Stil-Resets und Box-Sizing */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    font-family: 'Roboto', sans-serif;
+    background-color: #f4f7f9;
+    color: #333;
+    line-height: 1.6;
+}
+
+/* --- Layout --- */
+.container {
+    padding: 20px;
+}
+
+header {
+    background-color: #0c1a32;
+    color: #fff;
+    padding: 10px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+header h1 {
+    font-size: 1.5em;
+    margin: 0;
+}
+
+.logo-container {
+    display: flex;
+    align-items: center;
+}
+
+.logo {
+    height: 40px;
+    margin-right: 10px;
+}
+
+nav ul {
+    list-style: none;
+    display: flex;
+    justify-content: center;
+    padding: 10px 0;
+    flex-wrap: wrap;
+}
+
+nav a {
+    color: #fff;
+    text-decoration: none;
+    padding: 8px 15px;
+    border-radius: 5px;
+    transition: background-color 0.3s ease;
+}
+
+nav a:hover {
+    background-color: #0a1526;
+}
+
+nav a.active {
+    background-color: #0a1526;
+    font-weight: bold;
+}
+
+main {
+    padding-bottom: 50px; /* Platz für Footer */
+}
+
+footer {
+    background-color: #333;
+    color: #fff;
+    text-align: center;
+    padding: 10px 0;
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+}
+
+/* --- Allgemeine Komponenten --- */
+h2, h3 {
+    color: #0c1a32;
+    margin-top: 20px;
+    margin-bottom: 10px;
+}
+
+.action-button, .danger-button, .edit-button, .delete-button {
+    background-color: #007bff;
+    color: #fff;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1em;
+    transition: background-color 0.3s ease;
+}
+
+.action-button:hover {
+    background-color: #0056b3;
+}
+
+.danger-button {
+    background-color: #dc3545;
+}
+
+.danger-button:hover {
+    background-color: #c82333;
+}
+
+.edit-button {
+    background-color: #ffc107;
+    color: #333;
+}
+
+.delete-button {
+    background-color: #dc3545;
+}
+
+/* --- Formulare und Eingabefelder --- */
+form {
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+}
+
+label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+input[type="text"], input[type="password"], input[type="number"] {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 15px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+/* --- Netzwerk-Liste --- */
+.network-list {
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    padding: 10px;
+}
+
+.network-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px;
+    border-bottom: 1px solid #eee;
+}
+
+.network-item:last-child {
+    border-bottom: none;
+}
+
+.network-actions button {
+    margin-left: 5px;
+}
+
+/* --- Statusanzeigen --- */
+.status-box {
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    text-align: center;
+}
+
+.status-indicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2em;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+.status-dot {
+    height: 20px;
+    width: 20px;
+    background-color: #bbb;
+    border-radius: 50%;
+    margin-right: 10px;
+}
+
+.status-dot.green-solid { background-color: #28a745; }
+.status-dot.red-solid { background-color: #dc3545; }
+.status-dot.yellow-solid { background-color: #ffc107; }
+
+/* Blinkanimation für LEDs */
+.led-status-dot.green-blink { background-color: #28a745; animation: blink-green 1.5s infinite; }
+.led-status-dot.red-blink { background-color: #dc3545; animation: blink-red 1.5s infinite; }
+
+@keyframes blink-green {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
+
+@keyframes blink-red {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
+
+/* --- Diagnose-Seite --- */
+.info-box, .log-box, .settings-section {
+    background-color: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+}
+
+.log-display {
+    background-color: #f8f9fa;
+    border: 1px solid #e9ecef;
+    padding: 10px;
+    border-radius: 4px;
+    max-height: 200px;
+    overflow-y: scroll;
+}
+
+/* --- Responsive Layout für größere Bildschirme --- */
+@media (min-width: 768px) {
+    .container {
+        max-width: 700px;
+        margin: 0 auto;
+    }
+
+    header {
+        justify-content: flex-start;
+    }
+    nav ul {
+        justify-content: flex-end;
+    }
+
+    form {
+        display: grid;
+        grid-template-columns: 1fr 2fr;
+        gap: 10px;
+        align-items: center;
+    }
+    
+    .action-button, .danger-button {
+        grid-column: 2 / 3;
+    }
+}

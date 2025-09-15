@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block title %}Einstellungen - TravelWifi{% endblock %}
+
+{% block content %}
+    <h2>System-Einstellungen</h2>
+    <div class="settings-section">
+        <h3>Netzwerk-Adapter zuweisen</h3>
+        <form action="{{ url_for('save_settings') }}" method="post">
+            <label for="ap_interface">Access Point Adapter:</label>
+            <input type="text" id="ap_interface" name="ap_interface" value="{{ config.ap_interface }}" required>
+
+            <label for="client_interface">Internet-Client Adapter:</label>
+            <input type="text" id="client_interface" name="client_interface" value="{{ config.client_interface }}" required>
+
+            <button type="submit" class="action-button">Speichern</button>
+        </form>
+    </div>
+
+    <div class="settings-section">
+        <h3>AP-Einstellungen</h3>
+        <form action="{{ url_for('save_settings') }}" method="post">
+            <label for="ap_ssid">AP Name (SSID):</label>
+            <input type="text" id="ap_ssid" name="ap_ssid" value="{{ config.ap_ssid }}" required>
+
+            <label for="ap_password">AP Passwort:</label>
+            <input type="password" id="ap_password" name="ap_password" value="{{ config.ap_password }}" required>
+
+            <button type="submit" class="action-button">Speichern</button>
+        </form>
+    </div>
+    
+    <div class="settings-section">
+        <h3>WiGLE API</h3>
+        <form action="{{ url_for('save_settings') }}" method="post">
+            <label for="wigle_api_name">API Name:</label>
+            <input type="text" id="wigle_api_name" name="wigle_api_name" value="{{ config.wigle_api.api_name }}" required>
+
+            <label for="wigle_api_token">API Token:</label>
+            <input type="password" id="wigle_api_token" name="wigle_api_token" value="{{ config.wigle_api.api_token }}" required>
+
+            <button type="submit" class="action-button">Speichern</button>
+        </form>
+    </div>
+
+    <div class="settings-section">
+        <h3>Erweiterte Funktionen</h3>
+        <form action="{{ url_for('save_settings') }}" method="post">
+            <label for="power_saving">
+                <input type="checkbox" id="power_saving" name="power_saving" {% if config.power_saving_timeout > 0 %}checked{% endif %}>
+                Automatischen Energiesparmodus aktivieren
+            </label>
+            
+            <label for="power_saving_timeout">Zeit bis Ruhezustand (Sekunden):</label>
+            <input type="number" id="power_saving_timeout" name="power_saving_timeout" value="{{ config.power_saving_timeout }}" required>
+
+            <button type="submit" class="action-button">Speichern</button>
+        </form>
+    </div>
+
+    <div class="settings-section">
+        <h3>System-Wartung</h3>
+        <form action="{{ url_for('save_settings') }}" method="post">
+            <button type="submit" name="action" value="factory_reset" class="danger-button">Werksreset</button>
+            <p class="note">Achtung: Alle Einstellungen werden gelöscht.</p>
+        </form>
+    </div>
+
+{% endblock %}

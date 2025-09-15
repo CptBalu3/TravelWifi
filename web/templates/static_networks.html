@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block title %}Netzwerke verwalten - TravelWifi{% endblock %}
+
+{% block content %}
+    <h2>Gespeicherte Netzwerke</h2>
+    <div class="network-list">
+        {% if config.networks %}
+            {% for network in config.networks %}
+                <div class="network-item">
+                    <span>{{ network.ssid }}</span>
+                    {% if network.static %}
+                        <span class="static-label">Statisch</span>
+                    {% endif %}
+                    <div class="network-actions">
+                        <button class="edit-button">Bearbeiten</button>
+                        <button class="delete-button">Löschen</button>
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <p>Bisher wurden keine Netzwerke gespeichert.</p>
+        {% endif %}
+    </div>
+
+    <h2>Netzwerk manuell hinzufügen</h2>
+    <form class="add-network-form" action="/add_network" method="post">
+        <label for="new_ssid">SSID:</label>
+        <input type="text" id="new_ssid" name="ssid" required>
+        <label for="new_password">Passwort:</label>
+        <input type="password" id="new_password" name="password">
+        <button type="submit" class="action-button">Hinzufügen</button>
+    </form>
+    
+    <h2>Netzwerke von WiGLE laden</h2>
+    <form class="wigle-form" action="/wigle_search" method="post">
+        <p class="note">Geben Sie einen Ort ein, um Netzwerke aus Ihrer Umgebung zu finden.</p>
+        <label for="location_name">Ort:</label>
+        <input type="text" id="location_name" name="location" placeholder="z.B. Berlin" required>
+        <button type="submit" class="action-button">Suche starten</button>
+    </form>
+{% endblock %}

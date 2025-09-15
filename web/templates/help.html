@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block title %}Hilfe - TravelWifi{% endblock %}
+
+{% block content %}
+    <h2>Hilfe & Anleitung</h2>
+    <p>Willkommen beim TravelWifi-System! Hier finden Sie wichtige Informationen und Tipps zur Nutzung Ihres Geräts.</p>
+
+    <div class="help-section">
+        <h3>Bedeutung der Status-LEDs</h3>
+        <p>Die LEDs auf Ihrem Gerät geben Auskunft über den aktuellen Status:</p>
+        <ul>
+            <li><span class="led-status-dot green-blink"></span> **Grün blinkend:** Das System ist hochgefahren und wartet auf eine Verbindung mit einem externen Netzwerk.</li>
+            <li><span class="led-status-dot green-solid"></span> **Grün leuchtend:** Eine Internetverbindung wurde erfolgreich hergestellt. Das System ist betriebsbereit.</li>
+            <li><span class="led-status-dot red-blink"></span> **Rot blinkend:** Ein kritischer Fehler ist aufgetreten oder es konnte keine Verbindung zum Internet hergestellt werden. Überprüfen Sie die Diagnose-Seite für Details.</li>
+        </ul>
+    </div>
+
+    <div class="help-section">
+        <h3>Grundlegende Fehlersuche</h3>
+        <p>Wenn die Internetverbindung nicht funktioniert, versuchen Sie bitte folgende Schritte:</p>
+        <ol>
+            <li>Stellen Sie sicher, dass Ihr Gerät sich in Reichweite eines bekannten Netzwerks befindet.</li>
+            <li>Führen Sie auf der Startseite einen neuen Netzwerk-Scan durch.</li>
+            <li>Prüfen Sie auf der Diagnose-Seite den System-Log auf Fehlermeldungen.</li>
+            <li>Wenn das Problem weiterhin besteht, versuchen Sie einen Neustart des Geräts.</li>
+        </ol>
+    </div>
+
+    <div class="help-section">
+        <h3>Hinweise zur optimalen Nutzung</h3>
+        <ul>
+            <li>**Standort:** Platzieren Sie das Gerät so frei wie möglich, um eine optimale WLAN-Reichweite und Signalstärke zu erzielen.</li>
+            <li>**Werksreset:** Sollte das System in einen unbrauchbaren Zustand geraten, nutzen Sie die Werksreset-Option in den Einstellungen, um es auf seine ursprünglichen Werte zurückzusetzen.</li>
+        </ul>
+    </div>
+{% endblock %}

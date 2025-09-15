@@ -1,0 +1,12 @@
+{
+  "ap_interface": "",
+  "client_interface": "",
+  "ap_ssid": "mage-camp",
+  "ap_password": "Wuschel2021",
+  "power_saving_timeout": 1800,
+  "wigle_api": {
+    "api_name": "",
+    "api_token": ""
+  },
+  "networks": []
+}
